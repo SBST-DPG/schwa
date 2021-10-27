@@ -24,6 +24,7 @@ import os
 import argparse
 import signal
 import sys
+import csv
 from schwa.web import Server
 from schwa import Schwa, SchwaConfigurationException
 from schwa.extraction import RepositoryExtractionException
@@ -93,8 +94,9 @@ class Controller:
         Views.wait()
         try:
             s = Schwa(args.repository)
-            analytics = s.analyze(max_commits=args.commits, parallel=not args.single)
-            Views.results(analytics)
+            analytics = s.analyze(max_commits=args.commits, parallel=not args.single, ignore_regex="src/test")
+            Views.results_to_csv(analytics)
+            # Views.results(analytics)
         except (RepositoryExtractionException, SchwaConfigurationException) as e:
             Views.failed(e)
             sys.exit(1)
@@ -131,6 +133,15 @@ class Views:
     @staticmethod
     def wait():
         print("Please wait...")
+
+    @staticmethod
+    def results_to_csv(analytics):
+        if analytics.is_empty():
+            print("Couldn't find enough data to produce results.")
+        else:
+            for file_analytic_path, file_analytic in analytics.files_analytics.items():
+                with open(r'schwa_results.csv', 'a', newline='') as cs:
+                    csv.writer(cs).writerow([file_analytic_path, str(file_analytic.defect_prob)])
 
     @staticmethod
     def results(analytics):
